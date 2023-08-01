@@ -11,6 +11,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command as clap_Command};
 use futures::stream;
 use lazy_static::lazy_static;
 use std::borrow::Borrow;
+use std::f32::consts::E;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -195,9 +196,14 @@ fn cmd_match(matches: &ArgMatches) {
                         continue;
                     }
                 };
-                let mut stream = stream::iter(vec_lp);
+                let stream = stream::iter(vec_lp.clone());
                 let r = iox_client.write_lp_stream(namespace, stream).await;
-                println!("{:?}", r);
+                match r {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{:?}{}", vec_lp, e);
+                    }
+                }
             }
         });
     }
