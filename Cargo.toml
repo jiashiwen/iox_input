@@ -1,0 +1,50 @@
+[package]
+name = "interactcli-rs"
+version = "0.1.0"
+authors = ["jiashiwen"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# To use 'RUSTFLAGS="$RUSTFLAGS -A dead_code" cargo build' not desplay dead_code warning
+
+[dependencies]
+clap = "4.2.4"
+rustyline = "11.0.0"
+rustyline-derive = "0.8.0"
+shellwords = "1.1.0"
+log = "0.4.17"
+log4rs = "1.2.0"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_json = "1.0.96"
+serde_yaml = "0.9.21"
+lazy_static = "1.4.0"
+config = "0.13.3"
+reqwest = { version = "0.11.16", features = ["json"] }
+tokio = { version = "^1", features = ["full"] }
+url = "2.3.1"
+prettytable-rs = "0.10.0"
+anyhow = "1.0.70"
+fork = "0.1.21"
+sysinfo = "0.28.4"
+chrono = "0.4.24"
+signal-hook = "0.3.15"
+daemonize = "0.5.0"
+
+
+influxdb_iox_client = { git = "https://github.com/influxdata/influxdb_iox", features = [
+    "flight",
+] }
+futures = "0.3.28"
+
+
+[[example]]
+name = "sshsample"
+path = "examples/sshsample.rs"
+
+[[example]]
+name = "configrs"
+path = "examples/configrs.rs"
+
+[[example]]
+name = "yamlparser"
+path = "examples/yamlparser.rs"
