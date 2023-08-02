@@ -201,7 +201,7 @@ fn cmd_match(matches: &ArgMatches) {
                 match r {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("{:?}{}", vec_lp, e);
+                        log::error!("{:?}{}", json_str, e);
                     }
                 }
             }
