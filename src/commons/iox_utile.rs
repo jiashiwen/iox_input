@@ -162,13 +162,13 @@ pub fn format_to_lp(content: &str) -> Result<Vec<String>> {
     let tags = metric.meta.tags;
     let mut tags_str = tags
         .iter()
-        .map(|v| v[0].clone() + "=" + &v[1] + ",")
+        .map(|v| v[0].clone() + "=" + "\"" + &v[1] + "\"" + ",")
         .collect::<String>();
     tags_str.pop();
 
     for (idx, time) in metric.time.iter().enumerate() {
         // line protocl 格式
-        // cpu,host="192.168.1.1",region="cn-north-1" idle=0.33,user=0.16 1556813561098000000
+        // cpu,host="192.168.1.1",region="cn-north-1",key=a\ b idle=0.33,user=0.16 1556813561098000000
         // <measurement>[,<tag_key>=<tag_value>[,<tag_key>=<tag_value>]] <field_key>=<field_value>[,<field_key>=<field_value>] [<timestamp>]
         let mut field = metric.meta.name.clone();
         let measurement = match schema_map.get(field.as_str()) {
