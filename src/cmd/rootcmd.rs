@@ -197,23 +197,23 @@ fn cmd_match(matches: &ArgMatches) {
                 }
             };
 
-            for lp in vec_lp {
-                match iox_client.write_lp(namespace, lp.clone()).await {
-                    Err(e) => {
-                        log::error!("{} \n {} \n {:?}", e, json_str, lp);
-                        continue;
-                    }
-                    _ => (),
-                };
-            }
-            // let stream = stream::iter(vec_lp.clone());
-            // let r = iox_client.write_lp_stream(namespace, stream).await;
-            // match r {
-            //     Ok(_) => {}
-            //     Err(e) => {
-            //         log::error!("{} \n {} \n {:?}", e, json_str, vec_lp);
-            //     }
+            // for lp in vec_lp {
+            //     match iox_client.write_lp(namespace, lp.clone()).await {
+            //         Err(e) => {
+            //             log::error!("{} \n {} \n {:?}", e, json_str, lp);
+            //             continue;
+            //         }
+            //         _ => (),
+            //     };
             // }
+            let stream = stream::iter(vec_lp.clone());
+            let r = iox_client.write_lp_stream(namespace, stream).await;
+            match r {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("{}", e);
+                }
+            }
         }
     });
 }
