@@ -162,7 +162,8 @@ pub fn format_to_lp(content: &str) -> Result<Vec<String>> {
     let tags = metric.meta.tags;
     let mut tags_str = tags
         .iter()
-        .map(|v| v[0].clone() + "=" + "\"" + &v[1] + "\"" + ",")
+        // .map(|v| v[0].clone() + "=" + "\"" + &v[1] + "\"" + ",")
+        .map(|v| v[0].clone() + "=" + &v[1].replace(" ", "\\ ") + ",")
         .collect::<String>();
     tags_str.pop();
 
