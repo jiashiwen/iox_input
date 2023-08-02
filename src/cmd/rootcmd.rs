@@ -155,56 +155,65 @@ fn cmd_match(matches: &ArgMatches) {
         }
     }
 
-    if let Some(ref iox_input) = matches.subcommand_matches("iox_input") {
-        let server = match iox_input.get_one::<String>("server") {
-            Some(s) => s,
-            None => {
-                return;
-            }
-        };
-        let namespace = match iox_input.get_one::<String>("namespace") {
-            Some(s) => s,
-            None => {
-                return;
-            }
-        };
-        let file_path = match iox_input.get_one::<String>("file") {
-            Some(s) => s,
-            None => {
-                return;
-            }
-        };
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let mut iox_client = gen_iox_client(server).await.unwrap();
-            let file = File::open(file_path).unwrap();
-            // 按行读文件
-            let lines = BufReader::new(file).lines();
-            for line in lines {
-                let json_str = match line {
-                    Ok(s) => s,
-                    Err(e) => {
-                        log::error!("{}", e);
-                        continue;
-                    }
-                };
-
-                let vec_lp = match format_to_lp(json_str.as_str()) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        log::error!("{}", e);
-                        continue;
-                    }
-                };
-                let stream = stream::iter(vec_lp.clone());
-                let r = iox_client.write_lp_stream(namespace, stream).await;
-                match r {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::error!("{} \n {} \n {:?}", e, json_str, vec_lp);
-                    }
+    let Some(ref iox_input) = matches.subcommand_matches("iox_input") else { return };
+    let server = match iox_input.get_one::<String>("server") {
+        Some(s) => s,
+        None => {
+            return;
+        }
+    };
+    let namespace = match iox_input.get_one::<String>("namespace") {
+        Some(s) => s,
+        None => {
+            return;
+        }
+    };
+    let file_path = match iox_input.get_one::<String>("file") {
+        Some(s) => s,
+        None => {
+            return;
+        }
+    };
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut iox_client = gen_iox_client(server).await.unwrap();
+        let file = File::open(file_path).unwrap();
+        // 按行读文件
+        let lines = BufReader::new(file).lines();
+        for line in lines {
+            let json_str = match line {
+                Ok(s) => s,
+                Err(e) => {
+                    log::error!("{}", e);
+                    continue;
                 }
+            };
+
+            let vec_lp = match format_to_lp(json_str.as_str()) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("{}", e);
+                    continue;
+                }
+            };
+
+            for lp in vec_lp {
+                match iox_client.write_lp(namespace, lp.clone()).await {
+                    Err(e) => {
+                        log::error!("{} \n {} \n {:?}", e, json_str, lp);
+                        continue;
+                    }
+                    _ => (),
+                };
             }
-        });
-    }
+            // let stream = stream::iter(vec_lp.clone());
+            // let r = iox_client.write_lp_stream(namespace, stream).await;
+            // match r {
+            //     Ok(_) => {}
+            //     Err(e) => {
+            //         log::error!("{} \n {} \n {:?}", e, json_str, vec_lp);
+            //     }
+            // }
+        }
+    });
 }
