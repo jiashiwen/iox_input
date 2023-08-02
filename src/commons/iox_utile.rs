@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Ok;
 use anyhow::Result;
+use futures::stream;
 use influxdb_iox_client::{connection::Builder, write::Client};
 use serde::{Deserialize, Serialize};
 use serde_yaml::from_str;
@@ -186,4 +187,25 @@ pub fn format_to_lp(content: &str) -> Result<Vec<String>> {
         vec_lp.push(lp);
     }
     Ok(vec_lp)
+}
+
+pub async fn write_json_to_iox(server: &str, namespace: &str, vec_json: Vec<String>) -> Result<()> {
+    let mut iox_client = gen_iox_client(&server).await?;
+
+    for json in vec_json {
+        let vec_lp = match format_to_lp(json.as_str()) {
+            anyhow::Result::Ok(v) => v,
+            Err(e) => {
+                log::error!("{}", e);
+                continue;
+            }
+        };
+        let stream = stream::iter(vec_lp);
+        // let r = iox_client.write_lp_stream(namespace, stream).await;
+        if let Err(e) = iox_client.write_lp_stream(namespace, stream).await {
+            log::error!("{}", e);
+        };
+    }
+
+    Ok(())
 }

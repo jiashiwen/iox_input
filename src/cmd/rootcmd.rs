@@ -1,5 +1,5 @@
 use crate::cmd::{new_iox_input_cmd, new_use_log_cmd};
-use crate::commons::{format_to_lp, SubCmd};
+use crate::commons::{format_to_lp, write_json_to_iox, SubCmd};
 use crate::commons::{gen_iox_client, CommandCompleter};
 use crate::configure::get_config;
 
@@ -14,6 +14,8 @@ use std::borrow::Borrow;
 use std::f32::consts::E;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use tokio::runtime;
+use tokio::task::JoinSet;
 
 use sysinfo::{PidExt, System, SystemExt};
 
@@ -174,46 +176,66 @@ fn cmd_match(matches: &ArgMatches) {
             return;
         }
     };
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let task_banch = 200;
+    let max_tasks = 16;
+    let rt = runtime::Builder::new_multi_thread()
+        .worker_threads(num_cpus::get())
+        .enable_all()
+        // .max_io_events_per_tick(self.task_threads)
+        .build()
+        .unwrap();
+    let mut set: JoinSet<()> = JoinSet::new();
     rt.block_on(async {
-        let mut iox_client = gen_iox_client(server).await.unwrap();
+        // let mut iox_client = gen_iox_client(server).await.unwrap();
         let file = File::open(file_path).unwrap();
+
+        let mut vec_json_str: Vec<String> = vec![];
+
         // 按行读文件
         let lines = BufReader::new(file).lines();
         for line in lines {
-            let json_str = match line {
-                Ok(s) => s,
+            match line {
+                Ok(s) => {
+                    vec_json_str.push(s);
+                }
                 Err(e) => {
                     log::error!("{}", e);
                     continue;
                 }
             };
 
-            let vec_lp = match format_to_lp(json_str.as_str()) {
-                Ok(v) => v,
-                Err(e) => {
-                    log::error!("{}", e);
-                    continue;
+            if vec_json_str.len().eq(&task_banch) {
+                while set.len() >= max_tasks {
+                    set.join_next().await;
                 }
-            };
-
-            // for lp in vec_lp {
-            //     match iox_client.write_lp(namespace, lp.clone()).await {
-            //         Err(e) => {
-            //             log::error!("{} \n {} \n {:?}", e, json_str, lp);
-            //             continue;
-            //         }
-            //         _ => (),
-            //     };
-            // }
-            let stream = stream::iter(vec_lp.clone());
-            let r = iox_client.write_lp_stream(namespace, stream).await;
-            match r {
-                Ok(_) => {}
-                Err(e) => {
-                    log::error!("{}", e);
-                }
+                let vj = vec_json_str.clone();
+                let server = server.clone();
+                let ns: String = namespace.clone();
+                set.spawn(async move {
+                    if let Err(e) = write_json_to_iox(&server, ns.as_str(), vj).await {
+                        log::error!("{}", e);
+                    };
+                });
+                vec_json_str.clear();
             }
+        }
+
+        if vec_json_str.len() > 0 {
+            while set.len() >= max_tasks {
+                set.join_next().await;
+            }
+            let vj = vec_json_str.clone();
+            let server = server.clone();
+            let ns: String = namespace.clone();
+            set.spawn(async move {
+                if let Err(e) = write_json_to_iox(&server, ns.as_str(), vj).await {
+                    log::error!("{}", e);
+                };
+            });
+        }
+
+        while set.len() > 0 {
+            set.join_next().await;
         }
     });
 }
