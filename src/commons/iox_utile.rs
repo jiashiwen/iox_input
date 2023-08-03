@@ -211,9 +211,9 @@ pub async fn write_json_to_iox(
                 continue;
             }
         };
-        let stream = stream::iter(vec_lp);
+        let stream = stream::iter(vec_lp.clone());
         if let Err(e) = iox_client.write_lp_stream(namespace, stream).await {
-            log::error!("{}", e);
+            log::error!("{};{:?}", e, vec_lp);
             continue;
         };
         lp_count.fetch_add(count_lp, std::sync::atomic::Ordering::SeqCst);
