@@ -14,6 +14,8 @@ use std::borrow::Borrow;
 use std::f32::consts::E;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 use tokio::runtime;
 use tokio::task::JoinSet;
 
@@ -186,9 +188,8 @@ fn cmd_match(matches: &ArgMatches) {
         .unwrap();
     let mut set: JoinSet<()> = JoinSet::new();
     rt.block_on(async {
-        // let mut iox_client = gen_iox_client(server).await.unwrap();
+        let lp_count: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
         let file = File::open(file_path).unwrap();
-
         let mut vec_json_str: Vec<String> = vec![];
 
         // 按行读文件
@@ -211,8 +212,9 @@ fn cmd_match(matches: &ArgMatches) {
                 let vj = vec_json_str.clone();
                 let server = server.clone();
                 let ns: String = namespace.clone();
+                let count = Arc::clone(&lp_count);
                 set.spawn(async move {
-                    if let Err(e) = write_json_to_iox(&server, ns.as_str(), vj).await {
+                    if let Err(e) = write_json_to_iox(&server, ns.as_str(), vj, count).await {
                         log::error!("{}", e);
                     };
                 });
@@ -227,8 +229,9 @@ fn cmd_match(matches: &ArgMatches) {
             let vj = vec_json_str.clone();
             let server = server.clone();
             let ns: String = namespace.clone();
+            let count = Arc::clone(&lp_count);
             set.spawn(async move {
-                if let Err(e) = write_json_to_iox(&server, ns.as_str(), vj).await {
+                if let Err(e) = write_json_to_iox(&server, ns.as_str(), vj, count).await {
                     log::error!("{}", e);
                 };
             });
@@ -237,5 +240,7 @@ fn cmd_match(matches: &ArgMatches) {
         while set.len() > 0 {
             set.join_next().await;
         }
+
+        log::info!("lp count:{:?}", lp_count);
     });
 }

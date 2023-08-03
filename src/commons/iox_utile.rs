@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 
 use anyhow::Ok;
 use anyhow::Result;
@@ -189,23 +191,34 @@ pub fn format_to_lp(content: &str) -> Result<Vec<String>> {
     Ok(vec_lp)
 }
 
-pub async fn write_json_to_iox(server: &str, namespace: &str, vec_json: Vec<String>) -> Result<()> {
+pub async fn write_json_to_iox(
+    server: &str,
+    namespace: &str,
+    vec_json: Vec<String>,
+    lp_count: Arc<AtomicUsize>,
+) -> Result<()> {
+    let mut count_lp: usize = 0;
     let mut iox_client = gen_iox_client(&server).await?;
 
     for json in vec_json {
         let vec_lp = match format_to_lp(json.as_str()) {
-            anyhow::Result::Ok(v) => v,
+            anyhow::Result::Ok(v) => {
+                count_lp += 1;
+                v
+            }
             Err(e) => {
                 log::error!("{}", e);
                 continue;
             }
         };
         let stream = stream::iter(vec_lp);
-        // let r = iox_client.write_lp_stream(namespace, stream).await;
         if let Err(e) = iox_client.write_lp_stream(namespace, stream).await {
             log::error!("{}", e);
+            continue;
         };
+        lp_count.fetch_add(count_lp, std::sync::atomic::Ordering::SeqCst);
     }
+    log::info!("lp count:{:?}", lp_count);
 
     Ok(())
 }
