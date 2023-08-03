@@ -178,8 +178,8 @@ fn cmd_match(matches: &ArgMatches) {
             return;
         }
     };
-    let task_banch = 200;
-    let max_tasks = 16;
+    let task_banch = 100;
+    let max_tasks = 8;
     let rt = runtime::Builder::new_multi_thread()
         .worker_threads(num_cpus::get())
         .enable_all()
